@@ -84,10 +84,10 @@
       setStatus('Searching...');
       renderAnswerText('Waiting for AI response...');
       try {
-        const response = await fetch('https://ravindra-api.onrender.com', {
+        const response = await fetch('https://ravindra-apionrender.com/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query })
+          body: JSON.stringify({promt: query })
         });
         const json = await response.json();
         if (!response.ok) {
