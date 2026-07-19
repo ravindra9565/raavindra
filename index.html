@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Search</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(180deg, #06121f 0%, #081827 45%, #030712 100%); color: #e2e8f0; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 24px; }
+    .container { width: min(860px, 100%); display: grid; gap: 18px; }
+    .hero { text-align: center; }
+    .hero h1 { font-size: clamp(2rem, 3vw, 3rem); margin-bottom: 8px; }
+    .hero p { color: #94a3b8; font-size: 1rem; margin: 0; }
+    .card { background: rgba(8, 18, 34, 0.96); border: 1px solid rgba(255,255,255,0.08); border-radius: 28px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25); padding: 28px; }
+    .response { display: grid; gap: 16px; min-height: 220px; }
+    .response p { margin: 0; line-height: 1.8; color: #e2e8f0; }
+    .response pre { margin: 0; background: rgba(3,22,44,0.96); border: 1px solid rgba(56,189,248,0.18); border-radius: 18px; padding: 18px; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 0.95rem; color: #dbeafe; }
+    .response code { background: rgba(56,189,248,0.12); padding: 4px 8px; border-radius: 8px; }
+    .status { color: #94a3b8; text-align: center; font-size: 0.95rem; }
+    .status.error { color: #fb7185; }
+    .search-card { display: grid; gap: 12px; }
+    .search-row { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); width: min(860px, calc(100% - 48px)); display: flex; gap: 12px; align-items: center; }
+    .search-row input { flex: 1; min-height: 56px; padding: 0 18px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.1); background: rgba(7, 12, 22, 0.98); color: #f8fafc; font-size: 1rem; outline: none; transition: border-color 0.25s ease, box-shadow 0.25s ease; }
+    .search-row input:focus { border-color: #38bdf8; box-shadow: 0 0 0 4px rgba(56,189,248,0.12); }
+    .search-row button { min-width: 64px; border: none; border-radius: 999px; background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: #020617; cursor: pointer; font-size: 1.1rem; height: 56px; }
+    .footer { color: #94a3b8; text-align: center; font-size: 0.9rem; padding-top: 8px; }
+    .copy-button { align-self: flex-start; border: none; border-radius: 999px; padding: 10px 16px; background: rgba(56,189,248,0.16); color: #e2e8f0; cursor: pointer; transition: background 0.2s ease, transform 0.2s ease; }
+    .copy-button:hover { transform: translateY(-1px); background: rgba(56,189,248,0.26); }
+    @media (max-width: 720px) {
+      .search-row { flex-direction: column; }
+      .search-row button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>AI Search</h1>
+      <p>Simple colorful frontend with a bottom search bar.</p>
+    </div>
+
+    <div class="card">
+      <div class="response" id="resultText">
+        <p>Type your question into the box below, then press enter or click the button.</p>
+      </div>
+      <button id="copyButton" class="copy-button" type="button">Copy answer</button>
+      <p id="status" class="status">Enter your question and press enter.</p>
+    </div>
+
+    <div class="footer">Created for fast search and simple color layout.</div>
+  </div>
+
+  <div class="search-row">
+    <input id="aiQuery" type="text" placeholder="Ask anything..." autocomplete="off" />
+    <button id="askButton" aria-label="Search"><i class="fas fa-paper-plane"></i></button>
+  </div>
+
+  <script>
+    const aiQuery = document.getElementById('aiQuery');
+    const askButton = document.getElementById('askButton');
+    const status = document.getElementById('status');
+    const resultText = document.getElementById('resultText');
+    const copyButton = document.getElementById('copyButton');
+
+    function setStatus(text, error = false) {
+      status.textContent = text;
+      status.className = error ? 'status error' : 'status';
+    }
+
+    function renderAnswerText(rawText) {
+      const lines = rawText.split('\n');
+      resultText.innerHTML = '';
+
+      lines.forEach(line => {
+        if (!line.trim()) return;
+        const p = document.createElement('p');
+        p.textContent = line;
+        resultText.appendChild(p);
+      });
+    }
+
+    async function askAI(query) {
+      setStatus('Searching...');
+      renderAnswerText('Waiting for AI response...');
+      try {
+        const response = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+        const json = await response.json();
+        if (!response.ok) {
+          throw new Error(json?.detail || `Server returned ${response.status}`);
+        }
+        renderAnswerText(json.answer || 'No answer found.');
+        setStatus(`Showing answer for: "${json.query}"`);
+      } catch (error) {
+        renderAnswerText('Koshish fir se karein.');
+        setStatus(error.message, true);
+      }
+    }
+
+    function sendQuery() {
+      const query = aiQuery.value.trim();
+      if (!query) return;
+      aiQuery.value = '';
+      askAI(query);
+    }
+
+    function copyAnswer() {
+      const text = resultText.textContent.trim();
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        setStatus('Answer copied to clipboard!');
+      }).catch(() => {
+        setStatus('Copy failed, try again.', true);
+      });
+    }
+
+    askButton.addEventListener('click', sendQuery);
+    aiQuery.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        sendQuery();
+      }
+    });
+    copyButton.addEventListener('click', copyAnswer);
+  </script>
+</body>
+</html>
